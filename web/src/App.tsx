@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import { useReactMediaRecorder } from 'react-media-recorder'
 import './App.css'
 
 interface HealthStatus {
@@ -32,9 +33,32 @@ function App() {
   const SERVER_PORT = import.meta.env.VITE_SERVER_PORT || '3000';
   const SERVER_URL = `http://${SERVER_HOST}:${SERVER_PORT}`;
 
+  // Video recording hook
+  const {
+    status,
+    startRecording,
+    stopRecording,
+    mediaBlobUrl,
+    clearBlobUrl,
+    error: recordingError,
+  } = useReactMediaRecorder({ 
+    video: true,
+    audio: true,
+    askPermissionOnMount: true,
+    blobPropertyBag: { type: 'video/webm' },
+    mediaRecorderOptions: {
+      mimeType: 'video/webm;codecs=vp9'
+    }
+  });
+
   // Check server health on component mount
   useEffect(() => {
     checkServerHealth();
+    
+    // Check if we're running over HTTPS (required for camera access)
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      console.warn('Camera access requires HTTPS or localhost');
+    }
   }, []);
 
   const checkServerHealth = async () => {
@@ -96,6 +120,49 @@ function App() {
     } catch (error) {
       console.error('Error creating blob from URL:', error);
       setUploadError('Failed to create blob from URL: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
+  const handleVideoRecording = async () => {
+    if (!mediaBlobUrl) return;
+
+    try {
+      // Fetch the recorded video blob
+      const response = await fetch(mediaBlobUrl);
+      const blob = await response.blob();
+      
+      // Convert blob to File object
+      const file = new File([blob], 'recorded-video.webm', { type: blob.type });
+      setSelectedFile(file);
+      setUploadResult(null);
+      setUploadError(null);
+      console.log('Video recording file created:', file);
+    } catch (error) {
+      console.error('Error creating video file:', error);
+      setUploadError('Failed to create video file: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
+  const clearRecording = () => {
+    clearBlobUrl();
+    setUploadResult(null);
+    setUploadError(null);
+  };
+
+  const requestPermissions = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      console.log('Permissions granted:', stream);
+      // Stop the stream after getting permissions
+      stream.getTracks().forEach(track => track.stop());
+      setUploadError(null);
+    } catch (error) {
+      console.error('Permission denied:', error);
+      alert(error instanceof Error ? error.message : 'Unknown error');
+      setUploadError('Camera/microphone permission denied. Please allow access and try again.');
     }
   };
 
@@ -187,6 +254,88 @@ function App() {
           <button onClick={handleBlobFromUrl}>
             Create Blob from URL (Sample Image)
           </button>
+
+          <div className="or-divider">OR</div>
+
+          <div className="video-recording">
+            <h3>Record Video:</h3>
+            <div className="recording-controls">
+              <button onClick={requestPermissions}>
+                🔐 Request Camera Permission
+              </button>
+              
+              <button 
+                onClick={startRecording} 
+                disabled={status === 'recording'}
+                className={status === 'recording' ? 'recording' : ''}
+              >
+                {status === 'recording' ? '🔴 Recording...' : '📹 Start Recording'}
+              </button>
+              
+              <button 
+                onClick={stopRecording} 
+                disabled={status !== 'recording'}
+              >
+                ⏹️ Stop Recording
+              </button>
+              
+              {mediaBlobUrl && (
+                <button onClick={clearRecording}>
+                  🗑️ Clear Recording
+                </button>
+              )}
+            </div>
+            
+            {recordingError && (
+              <div className="recording-error">
+                <p>❌ Recording Error: {recordingError}</p>
+                <p>Make sure you've granted camera and microphone permissions.</p>
+              </div>
+            )}
+            
+            {mediaBlobUrl && (
+              <div className="video-preview">
+                <h4>Recorded Video:</h4>
+                <video 
+                  src={mediaBlobUrl} 
+                  controls 
+                  width="300" 
+                  height="200"
+                  style={{ marginBottom: '10px' }}
+                />
+                <br />
+                <button onClick={handleVideoRecording}>
+                  📤 Use This Video for Upload
+                </button>
+              </div>
+            )}
+            
+            <p className="recording-status">
+              Status: <span className={`status-${status}`}>{status}</span>
+              {status === 'idle' && ' - Click "Start Recording" to begin'}
+              {status === 'recording' && ' - Recording in progress...'}
+              {status === 'stopped' && ' - Recording completed'}
+            </p>
+            
+            <div className="recording-debug">
+              <p><strong>Debug Info:</strong></p>
+              <p>• Protocol: {location.protocol}</p>
+              <p>• Hostname: {location.hostname}</p>
+              <p>• Media Devices Available: {navigator.mediaDevices ? '✅' : '❌'}</p>
+              <p>• getUserMedia Available: {(navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') ? '✅' : '❌'}</p>
+              
+              {location.protocol === 'http:' && location.hostname !== 'localhost' && (
+                <div className="https-warning">
+                  <p><strong>⚠️ HTTPS Required for Camera Access</strong></p>
+                  <p><strong>Quick Solutions:</strong></p>
+                  <p>1. <strong>Use localhost:</strong> Access via <code>http://localhost:5173</code></p>
+                  <p>2. <strong>Chrome flags:</strong> Go to <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code></p>
+                  <p>3. <strong>Add this origin:</strong> <code>http://{location.hostname}:{location.port}</code></p>
+                  <p>4. <strong>Restart Chrome</strong> after making changes</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {selectedFile && (
