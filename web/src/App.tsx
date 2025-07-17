@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useReactMediaRecorder } from 'react-media-recorder'
 import './App.css'
@@ -33,6 +33,9 @@ function App() {
   const SERVER_PORT = import.meta.env.VITE_SERVER_PORT || '3000';
   const SERVER_URL = `http://${SERVER_HOST}:${SERVER_PORT}`;
 
+  // Ref for live preview video element
+  const liveVideoRef = useRef<HTMLVideoElement>(null);
+
   // Video recording hook
   const {
     status,
@@ -41,13 +44,24 @@ function App() {
     mediaBlobUrl,
     clearBlobUrl,
     error: recordingError,
+    previewStream,
   } = useReactMediaRecorder({ 
     video: true,
     audio: true,
     askPermissionOnMount: true,
-    blobPropertyBag: { type: 'video/webm' },
-    mediaRecorderOptions: {
-      mimeType: 'video/webm;codecs=vp9'
+    onStop: (blobUrl, blob) => {
+      console.log('Recording stopped, auto-uploading...', { blobUrl, blob });
+      if (blob) {
+        const file = new File([blob], 'recorded-video.mp4');
+        setSelectedFile(file);
+        setUploadResult(null);
+        setUploadError(null);
+        console.log('Video recording file created:', file);
+        // Auto-upload the recorded video
+        setTimeout(() => {
+          uploadFile(file);
+        }, 100);
+      }
     }
   });
 
@@ -60,6 +74,13 @@ function App() {
       console.warn('Camera access requires HTTPS or localhost');
     }
   }, []);
+
+  // Handle live preview stream
+  useEffect(() => {
+    if (liveVideoRef.current && previewStream) {
+      liveVideoRef.current.srcObject = previewStream;
+    }
+  }, [previewStream]);
 
   const checkServerHealth = async () => {
     try {
@@ -132,7 +153,7 @@ function App() {
       const blob = await response.blob();
       
       // Convert blob to File object
-      const file = new File([blob], 'recorded-video.webm', { type: blob.type });
+      const file = new File([blob], 'recorded-video.mp4');
       setSelectedFile(file);
       setUploadResult(null);
       setUploadError(null);
@@ -166,18 +187,19 @@ function App() {
     }
   };
 
-  const uploadFile = async () => {
-    if (!selectedFile) return;
+  const uploadFile = async (fileToUpload?: File) => {
+    const fileForUpload = fileToUpload || selectedFile;
+    if (!fileForUpload) return;
 
     setUploading(true);
     setUploadError(null);
     setUploadResult(null);
 
     try {
-      console.log('Starting upload...', selectedFile);
+      console.log('Starting upload...', fileForUpload);
       
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      formData.append('file', fileForUpload);
 
       console.log('FormData created, making request to:', `${SERVER_URL}/upload`);
 
@@ -293,6 +315,26 @@ function App() {
               </div>
             )}
             
+            {/* Live Preview during recording */}
+            {status === 'recording' && (
+              <div className="live-preview">
+                <h4>🔴 Live Recording:</h4>
+                <video
+                  ref={liveVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  width="300"
+                  height="200"
+                  style={{ 
+                    marginBottom: '10px',
+                    border: '2px solid #dc3545',
+                    borderRadius: '4px'
+                  }}
+                />
+              </div>
+            )}
+            
             {mediaBlobUrl && (
               <div className="video-preview">
                 <h4>Recorded Video:</h4>
@@ -307,6 +349,7 @@ function App() {
                 <button onClick={handleVideoRecording}>
                   📤 Use This Video for Upload
                 </button>
+                <p><small>Note: Video will auto-upload when recording stops</small></p>
               </div>
             )}
             
@@ -346,7 +389,7 @@ function App() {
             <p>🏷️ Type: {selectedFile.type}</p>
             
             <button 
-              onClick={uploadFile} 
+              onClick={() => uploadFile()} 
               disabled={uploading}
               className="upload-button"
             >

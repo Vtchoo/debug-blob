@@ -207,6 +207,21 @@ button:active {
   100% { opacity: 1; }
 }
 
+.live-preview {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #ffe6e6;
+  border-radius: 5px;
+  border: 2px solid #dc3545;
+}
+
+.live-preview h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #dc3545;
+  font-weight: bold;
+}
+
 .video-preview {
   margin-top: 15px;
   padding: 10px;
