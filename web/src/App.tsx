@@ -3,6 +3,14 @@ import axios from 'axios'
 import { useReactMediaRecorder } from 'react-media-recorder'
 import './App.css'
 
+// Create axios instance with default JSON content type
+const axiosInstance = axios.create({
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30000, // 30 seconds timeout
+})
+
 interface HealthStatus {
   status: string;
   timestamp: string;
@@ -85,7 +93,7 @@ function App() {
   const checkServerHealth = async () => {
     try {
       console.log('Checking server health...');
-      const response = await axios.get(`${SERVER_URL}/health`);
+      const response = await axiosInstance.get(`${SERVER_URL}/health`);
       setHealthStatus(response.data);
       setHealthError(null);
       console.log('Server health check successful:', response.data);
@@ -203,11 +211,10 @@ function App() {
 
       console.log('FormData created, making request to:', `${SERVER_URL}/upload`);
 
-      const response = await axios.post(`${SERVER_URL}/upload`, formData, {
+      const response = await axiosInstance.post(`${SERVER_URL}/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        timeout: 30000, // 30 seconds timeout
       });
 
       console.log('Upload successful:', response.data);
