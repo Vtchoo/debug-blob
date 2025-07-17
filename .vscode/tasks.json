@@ -1,0 +1,62 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start Server",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"dev"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/server"
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start Web App",
+			"type": "shell",
+			"command": "npm",
+			"args": ["run", "dev"],
+			"options": {
+				"cwd": "${workspaceFolder}/web"
+			},
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Install Server Dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": ["install"],
+			"options": {
+				"cwd": "${workspaceFolder}/server"
+			},
+			"group": "build"
+		},
+		{
+			"label": "Install Web Dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": ["install"],
+			"options": {
+				"cwd": "${workspaceFolder}/web"
+			},
+			"group": "build"
+		},
+		{
+			"label": "Build Web App",
+			"type": "shell",
+			"command": "npm",
+			"args": ["run", "build"],
+			"options": {
+				"cwd": "${workspaceFolder}/web"
+			},
+			"group": "build"
+		}
+	]
+}

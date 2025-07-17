@@ -1,0 +1,18 @@
+{
+  "name": "debug-blob-server",
+  "version": "1.0.0",
+  "description": "Fastify server for debugging blob uploads",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "fastify": "^4.24.3",
+    "@fastify/multipart": "^8.0.0",
+    "@fastify/cors": "^8.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
